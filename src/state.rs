@@ -60,6 +60,12 @@ impl State {
         let hash = hashed_password(password, &user.password_salt);
         (hash == user.password_hash).then_some(user)
     }
+
+    pub fn auth_mut(&mut self, username: String, password: String) -> Option<&mut User> {
+        let user = self.users.get_mut(&username)?;
+        let hash = hashed_password(password, &user.password_salt);
+        (hash == user.password_hash).then_some(user)
+    }
 }
 
 fn hashed_password(password: String, salt: &str) -> Vec<u8> {

@@ -35,6 +35,11 @@ pub enum Commands {
         id: uuid::Uuid,
     },
 
+    Delete {
+        /// ID of the paste to delete
+        id: uuid::Uuid
+    },
+
     /// registers a new user
     Register {},
 
