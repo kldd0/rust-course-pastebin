@@ -1,48 +1,54 @@
-use std::io::{Read, Write};
+use std::sync::Arc;
 
+use axum::{
+    Extension, Router, debug_handler,
+    extract::Path,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::{get, post},
+};
 use clap::Parser;
 use service::Service;
 use state::State;
+use uuid::Uuid;
 
 mod cli;
 mod service;
 mod state;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let args = cli::Args::parse();
     let state = State::load(&args.state)?;
     let service = Service::new(args.data_dir, state)?;
-    match args.command {
-        cli::Commands::Create { file: path } => {
-            let mut file = std::fs::File::open(path)?;
-            let mut body = String::new();
-            file.read_to_string(&mut body)?;
 
-            let auth = match args.username {
-                None => None,
-                Some(username) => Some((username, args.password.expect("Password is missing for the username"))),
-            };
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/paste", post(post_paste))
+        .route("/paste/{id}", get(get_paste))
+        .layer(Extension(Arc::new(service)));
 
-            let id = service.create(body, auth)?;
-            println!("{}", id);
-        }
-        cli::Commands::Read { id } => {
-            let body = service.read(&id)?;
-            std::io::stdout().write_all(body.as_bytes())?;
-        }
-        cli::Commands::Delete { id } => {
-            service.delete(id, args.username.unwrap(), args.password.unwrap())?;
-            println!("Success!");
-        }
-        cli::Commands::Register {} => {
-            service.register_user(args.username.unwrap(), args.password.unwrap())?;
-        }
-        cli::Commands::List {} => {
-            for id in service.list(args.username.unwrap(), args.password.unwrap())? {
-                println!("{id}");
-            }
-        }
-    }
-    service.dump_state(&args.state)?;
+    let address = "0.0.0.0:3000";
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
+    let fut = axum::serve(listener, app);
+    println!("Listening on {address}");
+    fut.await.unwrap();
+
     Ok(())
+}
+
+async fn root() -> &'static str {
+    "Hello!"
+}
+
+async fn get_paste(Path(paste_id): Path<Uuid>) -> String {
+    format!("Got GET /paste/{paste_id} request")
+}
+
+#[debug_handler]
+async fn post_paste(Extension(service): Extension<Arc<Service>>, body: String) -> Response {
+    match service.create(body, None) {
+        Ok(id) => id.into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
 }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 #[derive(Parser)]
 pub struct Args {
@@ -15,34 +15,4 @@ pub struct Args {
 
     #[arg(long, short)]
     pub password: Option<String>,
-
-    #[command(subcommand)]
-    pub command: Commands,
-}
-
-#[derive(Subcommand)]
-pub enum Commands {
-    /// upload a new file
-    Create {
-        /// path to the file to upload
-        #[arg(short, long)]
-        file: PathBuf,
-    },
-
-    /// read the existing file
-    Read {
-        /// ID of the file to read
-        id: uuid::Uuid,
-    },
-
-    Delete {
-        /// ID of the paste to delete
-        id: uuid::Uuid
-    },
-
-    /// registers a new user
-    Register {},
-
-    /// lists all pastes of the user
-    List {},
 }
