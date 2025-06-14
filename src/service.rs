@@ -77,6 +77,7 @@ impl Service {
         };
         std::fs::remove_file(self.data_dir.join(id_to_delete))?;
         user.paste_ids.remove(index);
+
         // TODO: clean up dangling entries if state serialization failed
         Ok(())
     }
